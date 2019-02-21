@@ -1,0 +1,54 @@
+---
+title: "Google Trends"
+author: "Oliver Jin and Santiago Tellez"
+date: "2/21/2019"
+output: pdf_document
+---
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+if (!require("pacman")) install.packages("pacman")
+pacman::p_load('stringr',
+               'knitr',
+               'ggplot2',
+               'astsa',
+               'gtrendsR')
+```
+
+```{r, echo=FALSE}
+#Loading Bloomberg Data
+
+opts_knit$set(root.dir = normalizePath("../"))
+
+SPX <- read.csv("data/SPX.csv")
+VIX <- read.csv("data/VIX.csv")
+```
+
+```{r, echo=FALSE}
+words <- c("stock")
+start_dates <- c(seq.Date(from = as.Date("2004-01-01"), to = as.Date("2019-01-01"), by = "month"))
+start_dates <- start_dates[seq(1, length(start_dates), by = 4)]
+
+#search_hits <- as.data.frame(matrix(nrow = 5700, ncol = 1))
+hits <- list()
+
+for (word in 1:length(words)) {
+  search_data <- gtrends(words[word], time = paste(start_dates[1], start_dates[2]))$interest_over_time
+  search_data$hits <- gsub("<1", "0.5", search_data$hits)
+  search_data$hits <- as.numeric(search_data$hits)
+  for (s_date in 2:(length(start_dates) - 1)) {
+    temp_data <- gtrends(words[word], 
+                                 time = paste(start_dates[s_date], start_dates[s_date + 1]))$interest_over_time
+    temp_data$hits <- gsub("<1", "0.5", temp_data$hits)
+    temp_data$hits <- as.numeric(temp_data$hits)
+    ratio <-  temp_data$hits[1] / search_data$hits[nrow(search_data)]
+    search_data$hits <- search_data$hits * ratio
+    search_data <- rbind(search_data, temp_data[-1, ])
+  }
+  hits[[word]] <- search_data
+}
+
+  
+```
+
+
+
