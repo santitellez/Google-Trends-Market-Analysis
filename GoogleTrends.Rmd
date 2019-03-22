@@ -49,5 +49,24 @@ for (word in 1:length(words)) {
   
 ```
 
-
+```{r, echo=FALSE}
+#list of 107 words
+words <- c("stock", "stock market", "bond", "investment", "invest", "volatility", "gdp", "gnp",
+           "sp500", "s&p500", "spx", "vix", "russell2000", "russell1000", "leverage", "growth stock", 
+           "interest rate", "interest", "debt", "asset", "liability", "etf", "accounting", "finance", 
+           "repayment rate", "money market", "money market", "portfolio", "real estate",
+           "recession", "revenue", "cost", "savings", "trade", "treasury bill", "treasury stock",
+           "hedge fund", "investment bank", "corporate bank", "commercial bank", "bank",
+           "dividend", "taxes", "tax", "inflation", "recession", "risk", "crisis", "mortgage",
+           "credit rating", "shares", "cash", "currency", "cash inflow", "cash outflow", "bull market",
+           "bear market", "loan", "long term loan", "short term loan", "collateral", "gold", "silver",
+           "diamond", "platinum", "bronze", "gold price", "silver price","diamond price", "platinum price",
+           "bronze price", "water", "water price", "water bill", "gas", "gas price", 
+           "gas station", "electricity", "electricity fee", "electricity bill", "food", "food price",
+           "grocery", "grocery price", "microsoft", "microsoft open price", "microsoft close price",
+           "apple", "apple open price", "apple close price", "amazon", "amazon open price", 
+           "amazon close price", "finance", "refinance", "mortgage loan", "home loan", "house for sale",
+           "apartment for sale", "house for rent", "apartment for rent", "house price", "apartment price", 
+           "sugar", "sugar price", "salt", "salt price") 
+```
 
