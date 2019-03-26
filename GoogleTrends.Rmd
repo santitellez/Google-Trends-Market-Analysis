@@ -1,9 +1,21 @@
 ---
-title: "Google Trends"
+title: "Using Google Trends Data to Predict Market Volatility"
 author: "Oliver Jin and Santiago Tellez"
 date: "2/21/2019"
 output: pdf_document
 ---
+
+# Introduction
+
+## Background
+
+## Objectives
+
+# Previous Google Trends Analyses
+
+https://editorialexpress.com/cgi-bin/conference/download.cgi?db_name=SNDE2018&paper_id=100
+https://rstudio-pubs-static.s3.amazonaws.com/191657_7a946b1316274edfab270b0500190581.html
+
 
 ```{r, echo=FALSE, warning=FALSE, message=FALSE}
 if (!require("pacman")) install.packages("pacman")
@@ -24,26 +36,32 @@ VIX <- read.csv("data/VIX.csv")
 ```
 
 ```{r, echo=FALSE}
-words <- c("merger")
-start_dates <- c(seq.Date(from = as.Date("2004-01-01"), to = as.Date("2019-01-01"), by = "month"))
-start_dates <- start_dates[seq(1, length(start_dates), by = 4)]
 
-hits <- list()
+pull_data <- function(words){
+  start_dates <- c(seq.Date(from = as.Date("2004-01-01"), to = as.Date("2019-01-01"), by = "month"))
+  start_dates <- start_dates[seq(1, length(start_dates), by = 4)]
 
-for (word in 1:length(words)) {
-  search_data <- gtrends(words[word], time = paste(start_dates[1], start_dates[2]))$interest_over_time
-  search_data$hits <- gsub("<1", "0.5", search_data$hits)
-  search_data$hits <- as.numeric(search_data$hits)
-  for (s_date in 2:(length(start_dates) - 1)) {
-    time_text = paste(start_dates[s_date], start_dates[s_date + 1])
-    temp_data <- gtrends(words[word], time = time_text)$interest_over_time
-    temp_data$hits <- gsub("<1", "0.5", temp_data$hits)
-    temp_data$hits <- as.numeric(temp_data$hits)
-    ratio <-  temp_data$hits[1] / search_data$hits[nrow(search_data)]
-    search_data$hits <- search_data$hits * ratio
-    search_data <- rbind(search_data, temp_data[-1, ])
+  hits <- as.data.frame(matrix(NA, 
+                               nrow = as.numeric(as.Date("2019-01-01") - as.Date("2004-01-01") + 1), 
+                               ncol = length(words) + 1))
+
+  for (word in 1:length(words)) {
+    search_data <- gtrends(words[word], time = paste(start_dates[1], start_dates[2]))$interest_over_time
+    search_data$hits <- gsub("<1", "0.5", search_data$hits)
+    search_data$hits <- as.numeric(search_data$hits)
+    for (s_date in 2:(length(start_dates) - 1)) {
+      time_text = paste(start_dates[s_date], start_dates[s_date + 1])
+      temp_data <- gtrends(words[word], time = time_text)$interest_over_time
+      temp_data$hits <- gsub("<1", "0.5", temp_data$hits)
+      temp_data$hits <- as.numeric(temp_data$hits)
+      ratio <-  temp_data$hits[1] / search_data$hits[nrow(search_data)]
+      search_data$hits <- search_data$hits * ratio
+      search_data <- rbind(search_data, temp_data[-1, ])
+    }
+    hits[,word + 1] <- search_data$hits
   }
-  hits[[word]] <- search_data
+  hits[,1] <- search_data$date
+  return(hits)
 }
 
   
@@ -51,22 +69,35 @@ for (word in 1:length(words)) {
 
 ```{r, echo=FALSE}
 #list of 107 words
-words <- c("stock", "stock market", "bond", "investment", "invest", "volatility", "gdp", "gnp",
-           "sp500", "s&p500", "spx", "vix", "russell2000", "russell1000", "leverage", "growth stock", 
+keywords <- unique(c("stock", "market", "bond", "investment", "invest", "volatility", "gdp", "gnp",
+           "sp 500", "s&p 500", "spx", "vix", "russell 2000", "russell 1000", "leverage", "growth stock", 
            "interest rate", "interest", "debt", "asset", "liability", "etf", "accounting", "finance", 
-           "repayment rate", "money market", "money market", "portfolio", "real estate",
-           "recession", "revenue", "cost", "savings", "trade", "treasury bill", "treasury stock",
-           "hedge fund", "investment bank", "corporate bank", "commercial bank", "bank",
+           "repayment rate", "money market", "portfolio", "real estate", "treasury", "junk bond", 
+           "recession", "revenue", "cost", "savings", "trade", "treasury bill", "risk", "risky",
+           "hedge fund", "investment bank", "corporate bank", "commercial bank", "bank", "bear", "bull",
            "dividend", "taxes", "tax", "inflation", "recession", "risk", "crisis", "mortgage",
            "credit rating", "shares", "cash", "currency", "cash inflow", "cash outflow", "bull market",
            "bear market", "loan", "long term loan", "short term loan", "collateral", "gold", "silver",
            "diamond", "platinum", "bronze", "gold price", "silver price","diamond price", "platinum price",
-           "bronze price", "water", "water price", "water bill", "gas", "gas price", 
+           "bronze price", "water", "price", "bill", "gas", "gas price", 
            "gas station", "electricity", "electricity fee", "electricity bill", "food", "food price",
            "grocery", "grocery price", "microsoft", "microsoft open price", "microsoft close price",
-           "apple", "apple open price", "apple close price", "amazon", "amazon open price", 
-           "amazon close price", "finance", "refinance", "mortgage loan", "home loan", "house for sale",
+           "apple", "AAPL", "amazon", "AMZN", "XOM", "closing price", "opening price", "close price", "open price",
+           "finance", "refinance", "mortgage loan", "home loan", "house for sale",
            "apartment for sale", "house for rent", "apartment for rent", "house price", "apartment price", 
-           "sugar", "sugar price", "salt", "salt price") 
+           "sugar", "sugar price", "salt", "salt price", "merger", "crash", "fiscal", "rates", "bubble"))
+
+results <- pull_data(keywords)
+colnames(results) <- c("date", keywords)
+
+pull_data("volatility")
+
 ```
 
+# Exploratory Data Analysis
+
+# Models
+
+# Trading Strategy
+
+# Conclusion
