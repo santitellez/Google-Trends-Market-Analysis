@@ -33,6 +33,12 @@ opts_knit$set(root.dir = normalizePath("../"))
 
 SPX <- read.csv("data/SPX.csv")
 VIX <- read.csv("data/VIX.csv")
+
+VIX$Dates <- as.Date(as.character(VIX$Dates), "%m/%d/%y")
+SPX$Dates <- as.Date(as.character(SPX$Dates), "%m/%d/%y")
+
+colnames(VIX) <- c("Date", paste0(colnames(VIX)[-1], rep("_VIX", 3)))
+colnames(SPX) <- c("Date", paste0(colnames(SPX)[-1], rep("_SPX", 4)))
 ```
 
 ```{r, echo=FALSE}
@@ -61,6 +67,7 @@ pull_data <- function(words){
     hits[,word + 1] <- search_data$hits
   }
   hits[,1] <- search_data$date
+  colnames(hits) <- c("date", words)
   return(hits)
 }
 
@@ -87,16 +94,53 @@ keywords <- unique(c("stock", "market", "bond", "investment", "invest", "volatil
            "apartment for sale", "house for rent", "apartment for rent", "house price", "apartment price", 
            "sugar", "sugar price", "salt", "salt price", "merger", "crash", "fiscal", "rates", "bubble"))
 
-results <- pull_data(keywords)
-colnames(results) <- c("date", keywords)
+condensed_keywords <- c("stock", "crash", "bubble", "loan")
 
-pull_data("volatility")
+results <- pull_data(condensed_keywords)
+results$date <- as.Date(results$date)
 
 ```
 
 # Exploratory Data Analysis
 
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+smoother <- "3RSR"
+search_results <- ggplot(data = results) +
+  geom_line(aes(date, smooth(stock, kind = smoother)), color = "blue") +
+  geom_line(aes(date, smooth(crash, kind = smoother)), color = "red") +
+  geom_line(aes(date, smooth(bubble, kind = smoother)), color = "green") +
+  geom_line(aes(date, smooth(loan, kind = smoother)), color = "orange") +
+  xlab("Date") +
+  ylab("Hits") +
+  ggtitle("Search Volume") +
+  theme_classic() +
+  theme(plot.title = element_text(hjust = 0.5))
+search_results
+```
+
 # Models
+
+```{r, echo=FALSE}
+
+# VIX Up - 1       VIX Down - 0
+Directions <- as.data.frame((VIX$PX_LAST[-1] > VIX$PX_LAST[-nrow(VIX)]) * 1)
+Directions$date <- VIX$Date[-1]
+colnames(Directions) <- c("direction", "date")
+
+SPX_VIX <- merge(VIX, SPX, by = "Date")
+SPX_VIX_Gtrends <- merge(SPX_VIX, results, by.x = "Date", by.y = "date")
+
+Data <- merge(Directions, results)
+
+Data1 <- Data[1:1500, ]
+Data2 <- Data[1501:nrow(Data), ]
+
+s <- svm(direction ~ ., data = Data1, kernel = 'sigmoid')
+
+sum(round(predict(s, Data2)) == Data2$direction) / nrow(Data2)
+
+sum(Data2$direction == 0) / nrow(Data2)
+```
 
 # Trading Strategy
 
