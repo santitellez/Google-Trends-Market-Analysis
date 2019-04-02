@@ -24,6 +24,18 @@ pacman::p_load('stringr',
                'ggplot2',
                'astsa',
                'gtrendsR')
+
+lagpad <- function(x, k) {
+    if (!is.vector(x)) 
+        stop('x must be a vector')
+    if (!is.numeric(x)) 
+        stop('x must be numeric')
+    if (!is.numeric(k))
+        stop('k must be numeric')
+    if (1 != length(k))
+        stop('k must be a single number')
+    c(rep(NA, k), x)[1 : length(x)] 
+}
 ```
 
 ```{r, echo=FALSE}
@@ -132,12 +144,27 @@ SPX_VIX_Gtrends <- merge(SPX_VIX, results, by.x = "Date", by.y = "date")
 
 Data <- merge(Directions, results)
 
+lags <- 100
+for (lag in 1:lags) {
+  for (word in condensed_keywords) {
+    Data_colnames <- colnames(Data)
+    Data <- cbind(Data, lagpad(Data[, which(colnames(Data) == word)], lag))
+    colnames(Data) <- c(Data_colnames, paste0(word, as.character(lag)))
+  }
+}
+
+Data <- na.omit(Data)
+Data <- Data[, -which(colnames(Data) %in% condensed_keywords)]
+
 Data1 <- Data[1:1500, ]
 Data2 <- Data[1501:nrow(Data), ]
 
-s <- svm(direction ~ ., data = Data1, kernel = 'sigmoid')
+s <- svm(direction ~ ., data = Data1)
+rf <- randomForest(Data1[, -c(1, 2)], as.factor(Data1[, 2]))
 
 sum(round(predict(s, Data2)) == Data2$direction) / nrow(Data2)
+
+sum(predict(rf, Data2) == Data2$direction) / nrow(Data2)
 
 sum(Data2$direction == 0) / nrow(Data2)
 ```
