@@ -106,7 +106,7 @@ keywords <- unique(c("stock", "market", "bond", "investment", "invest", "volatil
            "apartment for sale", "house for rent", "apartment for rent", "house price", "apartment price", 
            "sugar", "sugar price", "salt", "salt price", "merger", "crash", "fiscal", "rates", "bubble"))
 
-condensed_keywords <- c("stock", "crash", "bubble", "loan")
+condensed_keywords <- c("stock", "crash", "bubble", "loan", "interest", "money", "bear", "bull", "risk")
 
 results <- pull_data(condensed_keywords)
 results$date <- as.Date(results$date)
