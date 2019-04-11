@@ -23,7 +23,9 @@ pacman::p_load('stringr',
                'knitr',
                'ggplot2',
                'astsa',
-               'gtrendsR')
+               'gtrendsR',
+               'e1071',
+               'randomForest')
 
 lagpad <- function(x, k) {
     if (!is.vector(x)) 
@@ -113,21 +115,62 @@ results$date <- as.Date(results$date)
 
 ```
 
+
+```{r, echo=FALSE}
+#Loading Words
+
+opts_knit$set(root.dir = normalizePath("../"))
+
+results <- read.csv("word.csv")
+results$Date <- as.Date(as.character(results$Date), format = "%m/%d/%Y")
+colnames(results)[1] <- "date"
+results <- results[ , colSums(is.na(results)) == 0]
+```
+
+# Smoothing Words
+
+```{r, echo=FALSE}
+
+```
+
 # Exploratory Data Analysis
 
 ```{r, echo=FALSE, message=FALSE, warning=FALSE}
 smoother <- "3RSR"
 search_results <- ggplot(data = results) +
-  geom_line(aes(date, smooth(stock, kind = smoother)), color = "blue") +
-  geom_line(aes(date, smooth(crash, kind = smoother)), color = "red") +
-  geom_line(aes(date, smooth(bubble, kind = smoother)), color = "green") +
-  geom_line(aes(date, smooth(loan, kind = smoother)), color = "orange") +
+  geom_line(aes(date, smooth(stock, kind = smoother), color = "stock")) +
+  geom_line(aes(date, smooth(crash, kind = smoother), color = "crash")) +
+  geom_line(aes(date, smooth(bubble, kind = smoother), color = "bubble")) +
   xlab("Date") +
   ylab("Hits") +
   ggtitle("Search Volume") +
   theme_classic() +
-  theme(plot.title = element_text(hjust = 0.5))
+  theme(plot.title = element_text(hjust = 0.5), legend.position = "bottom") +
+  scale_colour_manual("", 
+                      breaks = c("stock", "crash", "bubble"),
+                      values = c("blue", "green", "red"))
 search_results
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+
+Magnitudes <- as.data.frame(abs((VIX$PX_LAST[-1] - VIX$PX_LAST[-nrow(VIX)])))
+Magnitudes$date <- VIX$Date[-1]
+colnames(Magnitudes) <- c("magnitude", "date")
+
+SPX_VIX <- merge(VIX, SPX, by = "Date")
+SPX_VIX_Gtrends <- merge(SPX_VIX, results, by.x = "Date", by.y = "date")
+
+Data <- merge(Magnitudes, results)
+
+VIX_plot <- ggplot(data = Data) +
+  geom_line(aes(date, smooth(log(magnitude))), color = "blue") +
+  xlab("Date") +
+  ylab("Magnitude") +
+  ggtitle("VIX Daily Movements") +
+  theme_classic() +
+  theme(plot.title = element_text(hjust = 0.5))
+VIX_plot
 ```
 
 # Models
@@ -146,7 +189,7 @@ Data <- merge(Directions, results)
 
 lags <- 100
 for (lag in 1:lags) {
-  for (word in condensed_keywords) {
+  for (word in colnames(results[-1])) {
     Data_colnames <- colnames(Data)
     Data <- cbind(Data, lagpad(Data[, which(colnames(Data) == word)], lag))
     colnames(Data) <- c(Data_colnames, paste0(word, as.character(lag)))
@@ -154,7 +197,7 @@ for (lag in 1:lags) {
 }
 
 Data <- na.omit(Data)
-Data <- Data[, -which(colnames(Data) %in% condensed_keywords)]
+Data <- Data[, -which(colnames(Data) %in% colnames(results[-1]))]
 
 Data1 <- Data[1:1500, ]
 Data2 <- Data[1501:nrow(Data), ]
@@ -167,6 +210,30 @@ sum(round(predict(s, Data2)) == Data2$direction) / nrow(Data2)
 sum(predict(rf, Data2) == Data2$direction) / nrow(Data2)
 
 sum(Data2$direction == 0) / nrow(Data2)
+```
+
+
+```{r, echo=FALSE}
+
+lags <- 100
+for (lag in 1:lags) {
+  for (word in colnames(results[-1])) {
+    Data_colnames <- colnames(Data)
+    Data <- cbind(Data, lagpad(Data[, which(colnames(Data) == word)], lag))
+    colnames(Data) <- c(Data_colnames, paste0(word, as.character(lag)))
+  }
+}
+
+Data <- na.omit(Data)
+Data <- Data[, -which(colnames(Data) %in% colnames(results[-1]))]
+
+Data1 <- Data[1:1500, ]
+Data2 <- Data[1501:nrow(Data), ]
+
+lasso <- glmnet(as.matrix(Data1[, -c(1, 2)]), as.matrix(Data1[, 2]))
+rf <- randomForest(Data1[, -c(1, 2)], Data1[, 2])
+
+
 ```
 
 # Trading Strategy
