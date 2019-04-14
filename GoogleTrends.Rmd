@@ -26,7 +26,6 @@ pacman::p_load('stringr',
                'gtrendsR',
                'e1071',
                'randomForest')
-
 lagpad <- function(x, k) {
     if (!is.vector(x)) 
         stop('x must be a vector')
@@ -42,29 +41,22 @@ lagpad <- function(x, k) {
 
 ```{r, echo=FALSE}
 #Loading Bloomberg Data
-
 opts_knit$set(root.dir = normalizePath("../"))
-
 SPX <- read.csv("data/SPX.csv")
 VIX <- read.csv("data/VIX.csv")
-
 VIX$Dates <- as.Date(as.character(VIX$Dates), "%m/%d/%y")
 SPX$Dates <- as.Date(as.character(SPX$Dates), "%m/%d/%y")
-
 colnames(VIX) <- c("Date", paste0(colnames(VIX)[-1], rep("_VIX", 3)))
 colnames(SPX) <- c("Date", paste0(colnames(SPX)[-1], rep("_SPX", 4)))
 ```
 
 ```{r, echo=FALSE}
-
 pull_data <- function(words){
   start_dates <- c(seq.Date(from = as.Date("2004-01-01"), to = as.Date("2019-01-01"), by = "month"))
   start_dates <- start_dates[seq(1, length(start_dates), by = 4)]
-
   hits <- as.data.frame(matrix(NA, 
                                nrow = as.numeric(as.Date("2019-01-01") - as.Date("2004-01-01") + 1), 
                                ncol = length(words) + 1))
-
   for (word in 1:length(words)) {
     search_data <- gtrends(words[word], time = paste(start_dates[1], start_dates[2]))$interest_over_time
     search_data$hits <- gsub("<1", "0.5", search_data$hits)
@@ -84,7 +76,6 @@ pull_data <- function(words){
   colnames(hits) <- c("date", words)
   return(hits)
 }
-
   
 ```
 
@@ -107,20 +98,15 @@ keywords <- unique(c("stock", "market", "bond", "investment", "invest", "volatil
            "finance", "refinance", "mortgage loan", "home loan", "house for sale",
            "apartment for sale", "house for rent", "apartment for rent", "house price", "apartment price", 
            "sugar", "sugar price", "salt", "salt price", "merger", "crash", "fiscal", "rates", "bubble"))
-
 condensed_keywords <- c("stock", "crash", "bubble", "loan", "interest", "money", "bear", "bull", "risk")
-
 results <- pull_data(condensed_keywords)
 results$date <- as.Date(results$date)
-
 ```
 
 
 ```{r, echo=FALSE}
 #Loading Words
-
 opts_knit$set(root.dir = normalizePath("../"))
-
 results <- read.csv("word.csv")
 results$Date <- as.Date(as.character(results$Date), format = "%m/%d/%Y")
 colnames(results)[1] <- "date"
@@ -130,7 +116,6 @@ results <- results[ , colSums(is.na(results)) == 0]
 # Smoothing Words
 
 ```{r, echo=FALSE}
-
 ```
 
 # Exploratory Data Analysis
@@ -153,16 +138,12 @@ search_results
 ```
 
 ```{r, echo=FALSE, message=FALSE, warning=FALSE}
-
 Magnitudes <- as.data.frame(abs((VIX$PX_LAST[-1] - VIX$PX_LAST[-nrow(VIX)])))
 Magnitudes$date <- VIX$Date[-1]
 colnames(Magnitudes) <- c("magnitude", "date")
-
 SPX_VIX <- merge(VIX, SPX, by = "Date")
 SPX_VIX_Gtrends <- merge(SPX_VIX, results, by.x = "Date", by.y = "date")
-
 Data <- merge(Magnitudes, results)
-
 VIX_plot <- ggplot(data = Data) +
   geom_line(aes(date, smooth(log(magnitude))), color = "blue") +
   xlab("Date") +
@@ -176,17 +157,13 @@ VIX_plot
 # Models
 
 ```{r, echo=FALSE}
-
 # VIX Up - 1       VIX Down - 0
 Directions <- as.data.frame((VIX$PX_LAST[-1] > VIX$PX_LAST[-nrow(VIX)]) * 1)
 Directions$date <- VIX$Date[-1]
 colnames(Directions) <- c("direction", "date")
-
 SPX_VIX <- merge(VIX, SPX, by = "Date")
 SPX_VIX_Gtrends <- merge(SPX_VIX, results, by.x = "Date", by.y = "date")
-
 Data <- merge(Directions, results)
-
 lags <- 100
 for (lag in 1:lags) {
   for (word in colnames(results[-1])) {
@@ -195,27 +172,20 @@ for (lag in 1:lags) {
     colnames(Data) <- c(Data_colnames, paste0(word, as.character(lag)))
   }
 }
-
 Data <- na.omit(Data)
 Data <- Data[, -which(colnames(Data) %in% colnames(results[-1]))]
-
 Data1 <- Data[1:1500, ]
 Data2 <- Data[1501:nrow(Data), ]
-
 s <- svm(direction ~ ., data = Data1)
 rf <- randomForest(Data1[, -c(1, 2)], as.factor(Data1[, 2]))
-
 sum(round(predict(s, Data2)) == Data2$direction) / nrow(Data2)
-
 sum(predict(rf, Data2) == Data2$direction) / nrow(Data2)
-
 sum(Data2$direction == 0) / nrow(Data2)
 ```
 
 
 ```{r, echo=FALSE}
-
-lags <- 100
+lags <- 10
 for (lag in 1:lags) {
   for (word in colnames(results[-1])) {
     Data_colnames <- colnames(Data)
@@ -223,18 +193,171 @@ for (lag in 1:lags) {
     colnames(Data) <- c(Data_colnames, paste0(word, as.character(lag)))
   }
 }
-
 Data <- na.omit(Data)
 Data <- Data[, -which(colnames(Data) %in% colnames(results[-1]))]
+Data1 <- Data[1:2000, ]
+Data2 <- Data[2001:nrow(Data), ]
+training<-Data1[,-1]
+```
 
-Data1 <- Data[1:1500, ]
-Data2 <- Data[1501:nrow(Data), ]
 
-lasso <- glmnet(as.matrix(Data1[, -c(1, 2)]), as.matrix(Data1[, 2]))
-rf <- randomForest(Data1[, -c(1, 2)], Data1[, 2])
+```{r, echo=FALSE}
+library(caret)
+set.seed(123)
+#lasso
+lasso_fit <- train(magnitude ~ ., data = training,
+                 method = "glmnet", metric = "RMSE")
+lasso_RMSE<-RMSE(predict(lasso_fit, Data2), Data2$magnitude)
+lasso_RMSE
+#The final values used for the model were alpha = 0.55 and lambda = 0.07677905
+#RMSE: 1.402875
 
+
+#Non-convex penalized quantile regression
+rqnc_fit <- train(magnitude ~ ., data = training,
+                 method = "rqnc", metric = "RMSE")
+rqnc_RMSE<-RMSE(predict(rqnc_fit, Data2), Data2$magnitude)
+rqnc_RMSE
+#The final values used for the model were lambda = 0.1 and penalty = MCP
+#RMSE: 1.290154
+
+
+#Least Angle Regression
+lars_fit <- train(magnitude ~ ., data = training,
+                 method = "lars", metric = "RMSE")
+lars_RMSE<-RMSE(predict(lars_fit, Data2), Data2$magnitude)
+lars_RMSE
+#The final value used for the model was fraction = 0.05.
+#RMSE: 1.409329
+
+
+#Spike and Slab Regression
+spikeslab_fit <- train(magnitude ~ ., data = training,
+                 method = "spikeslab", metric = "RMSE")
+spikeslab_RMSE<-RMSE(predict(spikeslab_fit, Data2), Data2$magnitude)
+spikeslab_RMSE
+#The final value used for the model was vars = 38.
+#RMSE: 1.446507
+
+
+#Boosted Generalized Additive Model 
+gamboost_fit <- train(magnitude ~ ., data = training,
+                 method = "gamboost", metric = "RMSE")
+gamboost_RMSE<-RMSE(predict(gamboost_fit, Data2), Data2$magnitude)
+gamboost_RMSE
+#The final values used for the model were mstop = 50 and prune = no.
+#RMSE: 1.381269
+
+
+#Stochastic Gradient Boosting
+gbm_fit <- train(magnitude ~ ., data = training,
+                 method = "gbm", metric = "RMSE")
+gbm_RMSE<-RMSE(predict(gbm_fit, Data2), Data2$magnitude)
+gbm_RMSE
+#The final values used for the model were n.trees = 50, interaction.depth = 1, shrinkage = 0.1 and n.minobsinnode = 10.
+#RMSE: 1.512827
+
+
+#Elasticnet
+enet_fit <- train(magnitude ~ ., data = training,
+                 method = "enet", metric = "RMSE")
+enet_RMSE<-RMSE(predict(enet_fit, Data2), Data2$magnitude)
+enet_RMSE
+#The final values used for the model were fraction = 0.05 and lambda = 0.1.
+#RMSE: 1.430649
+
+
+#Gaussian Process
+gaussprLinear_fit <- train(magnitude ~ ., data = training,
+                 method = "gaussprLinear", metric = "RMSE")
+gaussprLinear_RMSE<-RMSE(predict(gaussprLinear_fit, Data2), Data2$magnitude)
+gaussprLinear_RMSE
+#RMSE: 2.343732
+
+
+
+#Gaussian Process with Radial Basis Function Kernel 
+gaussprRadial_fit <- train(magnitude ~ ., data = training,
+                 method = "gaussprRadial", metric = "RMSE")
+gaussprRadial_RMSE<-RMSE(predict(gaussprRadial_fit, Data2), Data2$magnitude)
+gaussprRadial_RMSE
+#Tuning parameter 'sigma' at a value of 0.001017136.
+#RMSE: 1.232594
+
+
+#k-Nearest Neighbors
+knn_fit <- train(magnitude ~ ., data = training,
+                 method = "knn", metric = "RMSE")
+knn_RMSE<-RMSE(predict(knn_fit, Data2), Data2$magnitude)
+knn_RMSE
+#The final value used for the model was k = 9.
+#RMSE: 1.30769
+
+
+#Model Averaged Neural Network
+avNNet_fit <- train(magnitude ~ ., data = training,
+                 method = "avNNet", metric = "RMSE")
+avNNet_RMSE<-RMSE(predict(avNNet_fit, Data2), Data2$magnitude)
+avNNet_RMSE
+#The final values used for the model were size = 1, decay = 0.1 and bag = FALSE.
+#RMSE: 1.243323
+
+
+#Principal Component Analysis
+pcr_fit <- train(magnitude ~ ., data = training,
+                 method = "pcr", metric = "RMSE")
+pcr_RMSE<-RMSE(predict(pcr_fit, Data2), Data2$magnitude)
+pcr_RMSE
+#The final value used for the model was ncomp = 2.
+#RMSE: 1.273429
+
+
+#CART
+rpart_fit <- train(magnitude ~ ., data = training,
+                 method = "rpart", metric = "RMSE")
+rpart_RMSE<-RMSE(predict(rpart_fit, Data2), Data2$magnitude)
+rpart_RMSE
+#The final value used for the model was cp = 0.1130472.
+#RMSE: 1.245966
+
+
+#Independent Component Regression
+icr_fit <- train(magnitude ~ ., data = training,
+                 method = "icr", metric = "RMSE")
+icr_RMSE<-RMSE(predict(icr_fit, Data2), Data2$magnitude)
+icr_RMSE
+#The final value used for the model was n.comp = 3.
+#RMSE: 1.383495
+
+#plot of the first 100 days of test set
+first<-predict(gaussprRadial_fit, Data2)[1:100]
+second<-predict(avNNet_fit, Data2)[1:100]
+actualmagnitude<-Data2$magnitude[1:100]
+a<-cbind(first,second)
+colnames(a)<-c('Gaussian Process with Radial Basis Function Kernel', 'Model Averaged Neural Network')
+date<-Data2$date[1:100]
+
+ggplot() + geom_line(aes(x=date,y=actualmagnitude,colour='actual')) + 
+           geom_line(aes(x=date,y=first,colour = 'prediction')) + 
+          ylab('magnitude')+xlab('date') +   
+  ggtitle("Magtitude of actual vs. best prediction") + 
+  theme_classic() +
+  theme(plot.title = element_text(hjust = 0.5), legend.position = "bottom") +
+  scale_colour_manual("", 
+                      breaks = c("actual", "prediction"),
+                      values = c("black", "red"))
+#most significant variables
+varimp_mars <- varImp(gaussprRadial_fit)
+ImpMeasure<-data.frame(varImp(gaussprRadial_fit)$importance)
+ImpMeasure$Vars<-row.names(ImpMeasure)
+a<-ImpMeasure[order(-ImpMeasure$Overall),][1:10,]
 
 ```
+
+
+
+
+
 
 # Trading Strategy
 
